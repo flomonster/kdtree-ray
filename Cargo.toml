@@ -1,0 +1,15 @@
+[package]
+name = "kdtree-ray"
+version = "0.1.0"
+authors = ["Florian Amsallem <florian.amsallem@epita.fr>"]
+description = "Fast Kdtree implementation for raytracer"
+documentation = "https://docs.rs/kdtree-ray"
+repository = "https://github.com/flomonster/kdtree-ray"
+homepage = "https://github.com/flomonster/kdtree-ray"
+edition = "2018"
+license = "MIT"
+keywords = ["kdtree", "raytracer", "3D", "sah"]
+exclude = [".github/"]
+
+[dependencies]
+cgmath="0.17.0"
