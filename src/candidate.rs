@@ -1,6 +1,6 @@
 use crate::item::Item;
 use crate::plane::Plane;
-use crate::BoundingBox;
+use crate::{BoundingBox, AABB};
 use std::cmp::Ordering;
 use std::sync::Arc;
 
@@ -22,23 +22,16 @@ impl<P: BoundingBox> Candidate<P> {
         }
     }
 
-    /// Return candidates (splits candidates) for a given dimension.
-    pub fn gen_candidates(item: Arc<Item<P>>, dim: usize) -> Candidates<P> {
-        match dim {
-            0 => vec![
-                Candidate::new(Plane::X(item.bb.0.x), true, item.clone()),
-                Candidate::new(Plane::X(item.bb.1.x), false, item),
-            ],
-            1 => vec![
-                Candidate::new(Plane::Y(item.bb.0.y), true, item.clone()),
-                Candidate::new(Plane::Y(item.bb.1.y), false, item),
-            ],
-            2 => vec![
-                Candidate::new(Plane::Z(item.bb.0.z), true, item.clone()),
-                Candidate::new(Plane::Z(item.bb.1.z), false, item),
-            ],
-            _ => panic!("Invalid dimension number received: ({})", dim),
-        }
+    /// Return candidates (splits candidates) for all dimension.
+    pub fn gen_candidates(item: Arc<Item<P>>, bb: &AABB) -> Candidates<P> {
+        vec![
+            Candidate::new(Plane::X(bb.0.x), true, item.clone()),
+            Candidate::new(Plane::X(bb.1.x), false, item.clone()),
+            Candidate::new(Plane::Y(bb.0.y), true, item.clone()),
+            Candidate::new(Plane::Y(bb.1.y), false, item.clone()),
+            Candidate::new(Plane::Z(bb.0.z), true, item.clone()),
+            Candidate::new(Plane::Z(bb.1.z), false, item),
+        ]
     }
 
     pub fn dimension(&self) -> usize {

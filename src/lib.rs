@@ -62,12 +62,15 @@ mod candidate;
 mod item;
 mod kdnode;
 mod plane;
+mod side;
 
 pub use bounding_box::*;
 
+use candidate::{Candidate, Candidates};
 use cgmath::*;
-use item::{Item, Items};
+use item::Item;
 use kdnode::KDtreeNode;
+use side::Side;
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -86,11 +89,13 @@ impl<P: BoundingBox> KDtree<P> {
     /// `Vec` of values that implement `BoundingBox` trait.
     pub fn new(mut values: Vec<P>) -> Self {
         let mut space = AABB(Vector3::<f32>::max_value(), Vector3::<f32>::min_value());
-        let mut items = Items::with_capacity(values.len());
+        let n = values.len();
+        let mut candidates = Candidates::with_capacity(n * 6);
         for (id, v) in values.drain(..).enumerate() {
             // Create items from values
             let bb = v.bounding_box();
-            items.push(Arc::new(Item::new(v, bb.clone(), id)));
+            let item = Arc::new(Item::new(v, id));
+            candidates.append(&mut Candidate::gen_candidates(item, &bb));
 
             // Update space with the bounding box of the item
             space.0.x = space.0.x.min(bb.0.x);
@@ -100,7 +105,13 @@ impl<P: BoundingBox> KDtree<P> {
             space.1.y = space.1.y.max(bb.1.y);
             space.1.z = space.1.z.max(bb.1.z);
         }
-        let root = KDtreeNode::new(&space, items);
+
+        // Sort candidates only once at the begining
+        candidates.sort_by(|a, b| a.cmp(&b));
+
+        // Will be used to classify candidates
+        let mut sides = vec![Side::Both; n];
+        let root = KDtreeNode::new(&space, candidates, n, &mut sides);
         KDtree { space, root }
     }
 

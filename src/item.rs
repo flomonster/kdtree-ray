@@ -1,21 +1,17 @@
-use crate::{BoundingBox, AABB};
+use crate::BoundingBox;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
-
-pub type Items<P> = Vec<Arc<Item<P>>>;
 
 #[derive(Debug)]
 pub struct Item<P: BoundingBox> {
     pub value: Arc<P>,
-    pub bb: AABB,
     pub id: usize,
 }
 
 impl<P: BoundingBox> Item<P> {
-    pub fn new(value: P, bb: AABB, id: usize) -> Self {
+    pub fn new(value: P, id: usize) -> Self {
         Item {
             value: Arc::new(value),
-            bb,
             id,
         }
     }
@@ -27,7 +23,6 @@ impl<P: BoundingBox> Clone for Item<P> {
     fn clone(&self) -> Self {
         Item {
             value: self.value.clone(),
-            bb: self.bb.clone(),
             id: self.id,
         }
     }
