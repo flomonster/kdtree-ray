@@ -99,7 +99,7 @@ impl<P: BoundingBox> KDtree<P> {
             space.1.y = space.1.y.max(bb.1.y);
             space.1.z = space.1.z.max(bb.1.z);
         }
-        let root = KDtreeNode::new(&space, items, 10);
+        let root = KDtreeNode::new(&space, items);
         KDtree { space, root }
     }
 

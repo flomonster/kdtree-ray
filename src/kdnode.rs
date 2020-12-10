@@ -4,6 +4,9 @@ use cgmath::*;
 use std::collections::HashSet;
 use std::sync::Arc;
 
+static K_T: f32 = 15.;
+static K_I: f32 = 20.;
+
 #[derive(Clone, Debug)]
 pub struct InternalNode<P: BoundingBox> {
     left_space: AABB,
@@ -19,16 +22,15 @@ pub enum KDtreeNode<P: BoundingBox> {
 }
 
 impl<P: BoundingBox> KDtreeNode<P> {
-    pub fn new(space: &AABB, items: Items<P>, max_depth: usize) -> Self {
-        // Heuristic to terminate the recursion
-        if items.len() <= 15 || max_depth == 0 {
+    pub fn new(space: &AABB, items: Items<P>) -> Self {
+        let (cost, plane) = Self::partition(&items, &space);
+
+        // Check that the cost of the splitting is not higher than the cost of the leaf.
+        if cost > K_I * items.len() as f32 {
             return Self::Leaf {
                 items: items.iter().cloned().collect(),
             };
         }
-
-        // Find a plane to partition the space
-        let plane = Self::partition(&space, max_depth);
 
         // Compute the new spaces divided by `plane`
         let (left_space, right_space) = Self::split_space(&space, &plane);
@@ -38,20 +40,40 @@ impl<P: BoundingBox> KDtreeNode<P> {
 
         Self::Node {
             node: Box::new(InternalNode {
-                left_node: Self::new(&left_space, left_items, max_depth - 1),
-                right_node: Self::new(&right_space, right_items, max_depth - 1),
+                left_node: Self::new(&left_space, left_items),
+                right_node: Self::new(&right_space, right_items),
                 left_space,
                 right_space,
             }),
         }
     }
 
-    fn partition(space: &AABB, max_depth: usize) -> Plane {
-        match max_depth % 3 {
-            0 => Plane::X((space.0.x + space.1.x) / 2.),
-            1 => Plane::Y((space.0.y + space.1.y) / 2.),
-            _ => Plane::Z((space.0.z + space.1.z) / 2.),
+    /// Takes the items and space of a node and return the best splitting plane and his cost
+    fn partition(items: &Items<P>, space: &AABB) -> (f32, Plane) {
+        let (mut best_cost, mut best_plane) = (f32::INFINITY, Plane::X(0.));
+        // For all the dimension
+        for dim in 0..3 {
+            for item in items {
+                for plane in item.candidates(dim) {
+                    // Compute the new spaces divided by `plane`
+                    let (left_space, right_space) = Self::split_space(&space, &plane);
+
+                    // Compute which items are part of the left and right space
+                    let (left_items, right_items) =
+                        Self::classify(&items, &left_space, &right_space);
+
+                    // Compute the cost of the current plane
+                    let cost = Self::cost(&plane, space, left_items.len(), right_items.len());
+
+                    // If better update the best values
+                    if cost < best_cost {
+                        best_cost = cost;
+                        best_plane = plane.clone();
+                    }
+                }
+            }
         }
+        (best_cost, best_plane)
     }
 
     pub fn intersect(
@@ -112,5 +134,32 @@ impl<P: BoundingBox> KDtreeNode<P> {
                 .cloned()
                 .collect(),
         )
+    }
+
+    /// Compute surface area volume of a space (AABB).
+    fn surface_area(v: &AABB) -> f32 {
+        (v.1.x - v.0.x) * (v.1.y - v.0.y) * (v.1.z - v.0.z)
+    }
+
+    /// Surface Area Heuristic (SAH)
+    fn cost(p: &Plane, v: &AABB, n_l: usize, n_r: usize) -> f32 {
+        // Split space
+        let (v_l, v_r) = Self::split_space(v, p);
+
+        // Compute the surface area of both subspace
+        let (vol_l, vol_r) = (Self::surface_area(&v_l), Self::surface_area(&v_r));
+
+        // Compute the surface area of the whole space
+        let vol_v = vol_l + vol_r;
+
+        // If one of the subspace is empty then the split can't be worth
+        if vol_v == 0. || vol_l == 0. || vol_r == 0. {
+            return f32::INFINITY;
+        }
+
+        // Decrease cost if it cuts empty space
+        let factor = if n_l == 0 || n_r == 0 { 0.8 } else { 1. };
+
+        factor * (K_T + K_I * (n_l as f32 * vol_l / vol_v + n_r as f32 * vol_r / vol_v))
     }
 }
