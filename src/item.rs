@@ -1,4 +1,3 @@
-use crate::plane::Plane;
 use crate::{BoundingBox, AABB};
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -18,21 +17,6 @@ impl<P: BoundingBox> Item<P> {
             value: Arc::new(value),
             bb,
             id,
-        }
-    }
-
-    pub fn candidates(&self, dim: usize) -> Vec<Plane> {
-        match dim {
-            0 => {
-                vec![Plane::X(self.bb.0.x), Plane::X(self.bb.1.x)]
-            }
-            1 => {
-                vec![Plane::Y(self.bb.0.y), Plane::Y(self.bb.1.y)]
-            }
-            2 => {
-                vec![Plane::Z(self.bb.0.z), Plane::Z(self.bb.1.z)]
-            }
-            _ => panic!("Invalid dimension number received: ({})", dim),
         }
     }
 }

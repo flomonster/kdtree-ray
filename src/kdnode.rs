@@ -1,3 +1,4 @@
+use crate::candidate::{Candidate, Candidates};
 use crate::plane::Plane;
 use crate::*;
 use cgmath::*;
@@ -23,7 +24,7 @@ pub enum KDtreeNode<P: BoundingBox> {
 
 impl<P: BoundingBox> KDtreeNode<P> {
     pub fn new(space: &AABB, items: Items<P>) -> Self {
-        let (cost, plane) = Self::partition(&items, &space);
+        let (cost, candidates, best_index) = Self::partition(&items, &space);
 
         // Check that the cost of the splitting is not higher than the cost of the leaf.
         if cost > K_I * items.len() as f32 {
@@ -33,10 +34,10 @@ impl<P: BoundingBox> KDtreeNode<P> {
         }
 
         // Compute the new spaces divided by `plane`
-        let (left_space, right_space) = Self::split_space(&space, &plane);
+        let (left_space, right_space) = Self::split_space(&space, &candidates[best_index].plane);
 
         // Compute which items are part of the left and right space
-        let (left_items, right_items) = Self::classify(&items, &left_space, &right_space);
+        let (left_items, right_items) = Self::classify(&candidates, best_index);
 
         Self::Node {
             node: Box::new(InternalNode {
@@ -48,32 +49,55 @@ impl<P: BoundingBox> KDtreeNode<P> {
         }
     }
 
-    /// Takes the items and space of a node and return the best splitting plane and his cost
-    fn partition(items: &Items<P>, space: &AABB) -> (f32, Plane) {
-        let (mut best_cost, mut best_plane) = (f32::INFINITY, Plane::X(0.));
+    /// Compute the best splitting candidate
+    /// Return:
+    /// * Cost of the split
+    /// * The list of candidates (in the best dimension found)
+    /// * Index of the best candidate
+    fn partition(items: &Items<P>, space: &AABB) -> (f32, Candidates<P>, usize) {
+        let mut best_cost = f32::INFINITY;
+        let mut best_candidate_index = 0;
+        let mut best_candidates = vec![];
+
         // For all the dimension
         for dim in 0..3 {
+            // Generate candidates
+            let mut candidates = vec![];
             for item in items {
-                for plane in item.candidates(dim) {
-                    // Compute the new spaces divided by `plane`
-                    let (left_space, right_space) = Self::split_space(&space, &plane);
+                candidates.append(&mut Candidate::gen_candidates(item.clone(), dim));
+            }
+            // Sort candidates
+            candidates.sort_by(|a, b| a.cmp(&b));
 
-                    // Compute which items are part of the left and right space
-                    let (left_items, right_items) =
-                        Self::classify(&items, &left_space, &right_space);
+            let mut n_r = items.len();
+            let mut n_l = 0;
+            let mut best_dim = false;
 
-                    // Compute the cost of the current plane
-                    let cost = Self::cost(&plane, space, left_items.len(), right_items.len());
+            // Find best candidate
+            for (i, candidate) in candidates.iter().enumerate() {
+                if candidate.is_right() {
+                    n_r -= 1;
+                }
 
-                    // If better update the best values
-                    if cost < best_cost {
-                        best_cost = cost;
-                        best_plane = plane.clone();
-                    }
+                // Compute the cost of the current plane
+                let cost = Self::cost(&candidate.plane, space, n_l, n_r);
+
+                // If better update the best values
+                if cost < best_cost {
+                    best_cost = cost;
+                    best_candidate_index = i;
+                    best_dim = true;
+                }
+
+                if candidate.is_left() {
+                    n_l += 1;
                 }
             }
+            if best_dim {
+                best_candidates = candidates;
+            }
         }
-        (best_cost, best_plane)
+        (best_cost, best_candidates, best_candidate_index)
     }
 
     pub fn intersect(
@@ -119,21 +143,21 @@ impl<P: BoundingBox> KDtreeNode<P> {
         (left, right)
     }
 
-    fn classify(items: &Items<P>, left_space: &AABB, right_space: &AABB) -> (Items<P>, Items<P>) {
-        (
-            // All items that overlap with the left space is taken
-            items
-                .iter()
-                .filter(|item| left_space.intersect_box(&item.bb))
-                .cloned()
-                .collect(),
-            // All items that overlap with the right space is taken
-            items
-                .iter()
-                .filter(|item| right_space.intersect_box(&item.bb))
-                .cloned()
-                .collect(),
-        )
+    fn classify(candidates: &Candidates<P>, best_index: usize) -> (Items<P>, Items<P>) {
+        let mut left_items = Items::with_capacity(candidates.len() / 3);
+        let mut right_items = Items::with_capacity(candidates.len() / 3);
+
+        for i in 0..best_index {
+            if candidates[i].is_left() {
+                left_items.push(candidates[i].item.clone());
+            }
+        }
+        for i in (1 + best_index)..candidates.len() {
+            if candidates[i].is_right() {
+                right_items.push(candidates[i].item.clone());
+            }
+        }
+        (left_items, right_items)
     }
 
     /// Compute surface area volume of a space (AABB).

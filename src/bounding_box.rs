@@ -62,10 +62,4 @@ impl AABB {
 
         true
     }
-
-    pub(crate) fn intersect_box(&self, other: &AABB) -> bool {
-        (self.0.x < other.1.x && self.1.x > other.0.x)
-            && (self.0.y < other.1.y && self.1.y > other.0.y)
-            && (self.0.z < other.1.z && self.1.z > other.0.z)
-    }
 }

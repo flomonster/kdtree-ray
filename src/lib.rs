@@ -58,6 +58,7 @@
 //! }
 //! ```
 mod bounding_box;
+mod candidate;
 mod item;
 mod kdnode;
 mod plane;
