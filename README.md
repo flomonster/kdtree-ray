@@ -19,6 +19,8 @@ for raytracer (or other rendering method using ray).
 
 It's based on this [paper](http://www.irisa.fr/prive/kadi/Sujets_CTR/kadi/Kadi_sujet2_article_Kdtree.pdf) written by *Ingo Wald* and *Vlastimil Havran*.
 
+For more information on how this library is implemented check out [my article](https://www.flomonster.fr/articles/kdtree.html).
+
 ### Installation
 
 To install it, just add the dependency in your `Cargo.toml`.
