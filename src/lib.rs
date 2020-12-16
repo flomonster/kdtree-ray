@@ -10,7 +10,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! kdtree-ray="0.1.0"
+//! kdtree-ray="0.1.1"
 //! ```
 //!
 //! # Usage & Tips
