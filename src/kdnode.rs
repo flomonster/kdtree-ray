@@ -2,7 +2,6 @@ use crate::candidate::Candidates;
 use crate::plane::Plane;
 use crate::*;
 use cgmath::*;
-use std::collections::HashSet;
 use std::sync::Arc;
 
 static K_T: f32 = 15.;
@@ -18,7 +17,7 @@ pub struct InternalNode<P: BoundingBox> {
 
 #[derive(Clone, Debug)]
 pub enum KDtreeNode<P: BoundingBox> {
-    Leaf { items: HashSet<Arc<Item<P>>> },
+    Leaf { values: Vec<Arc<P>> },
     Node { node: Box<InternalNode<P>> },
 }
 
@@ -34,14 +33,14 @@ impl<P: BoundingBox> KDtreeNode<P> {
         // Check that the cost of the splitting is not higher than the cost of the leaf.
         if cost > K_I * n as f32 {
             // Create the set of primitives
-            let mut items = HashSet::with_capacity(n);
+            let mut values = vec![];
             candidates
                 .drain(..)
                 .filter(|e| e.is_left() && e.dimension() == 0)
                 .for_each(|e| {
-                    items.insert(e.item);
+                    values.push(e.item.value.clone());
                 });
-            return Self::Leaf { items };
+            return Self::Leaf { values };
         }
 
         // Compute the new spaces divided by `plane`
@@ -106,22 +105,23 @@ impl<P: BoundingBox> KDtreeNode<P> {
 
     pub fn intersect(
         &self,
-        ray_origin: &Vector3<f32>,
-        ray_direction: &Vector3<f32>,
-        intersect_items: &mut HashSet<Arc<Item<P>>>,
+        origin: &Vector3<f32>,
+        inv_direction: &Vector3<f32>,
+        sign: &Vector3<usize>,
+        intersected_values: &mut Vec<Arc<P>>,
     ) {
         match self {
-            Self::Leaf { items } => {
-                intersect_items.extend(items.clone());
+            Self::Leaf { values } => {
+                intersected_values.append(&mut values.clone());
             }
             Self::Node { node } => {
-                if node.right_space.intersect_ray(ray_origin, ray_direction) {
+                if node.right_space.intersect_ray(origin, inv_direction, sign) {
                     node.right_node
-                        .intersect(ray_origin, ray_direction, intersect_items);
+                        .intersect(origin, inv_direction, sign, intersected_values);
                 }
-                if node.left_space.intersect_ray(ray_origin, ray_direction) {
+                if node.left_space.intersect_ray(origin, inv_direction, sign) {
                     node.left_node
-                        .intersect(ray_origin, ray_direction, intersect_items);
+                        .intersect(origin, inv_direction, sign, intersected_values);
                 }
             }
         }

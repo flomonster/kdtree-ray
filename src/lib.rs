@@ -71,7 +71,6 @@ use cgmath::*;
 use item::Item;
 use kdnode::KDtreeNode;
 use side::Side;
-use std::collections::HashSet;
 use std::sync::Arc;
 
 /// The KD-tree data structure stores the elements implementing BoundingBox.
@@ -122,11 +121,22 @@ impl<P: BoundingBox> KDtree<P> {
         ray_origin: &Vector3<f32>,
         ray_direction: &Vector3<f32>,
     ) -> Vec<Arc<P>> {
+        let inv_direction = Vector3::new(
+            1. / ray_direction.x,
+            1. / ray_direction.y,
+            1. / ray_direction.z,
+        );
+        let sign = Vector3::new(
+            (ray_direction.x < 0.) as usize,
+            (ray_direction.y < 0.) as usize,
+            (ray_direction.z < 0.) as usize,
+        );
+        let mut values = vec![];
         // Check if the ray intersect the bounding box of the Kd Tree
-        if self.space.intersect_ray(ray_origin, ray_direction) {
-            let mut items = HashSet::new();
-            self.root.intersect(ray_origin, ray_direction, &mut items);
-            items.iter().map(|e| e.value.clone()).collect()
+        if self.space.intersect_ray(ray_origin, &inv_direction, &sign) {
+            self.root
+                .intersect(ray_origin, &inv_direction, &sign, &mut values);
+            values
         } else {
             vec![]
         }

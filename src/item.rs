@@ -1,5 +1,4 @@
 use crate::BoundingBox;
-use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -25,18 +24,5 @@ impl<P: BoundingBox> Clone for Item<P> {
             value: self.value.clone(),
             id: self.id,
         }
-    }
-}
-
-impl<P: BoundingBox> Hash for Item<P> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
-    }
-}
-
-impl<P: BoundingBox> Eq for Item<P> {}
-impl<P: BoundingBox> PartialEq for Item<P> {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
     }
 }

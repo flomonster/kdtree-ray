@@ -1,4 +1,5 @@
 use cgmath::*;
+use std::ops::Index;
 
 /// Axis-aligned bounding box is defined by two positions.
 ///
@@ -22,44 +23,60 @@ pub trait BoundingBox {
     fn bounding_box(&self) -> AABB;
 }
 
+impl Index<usize> for AABB {
+    type Output = Vector3<f32>;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match index {
+            0 => &self.0,
+            _ => &self.1,
+        }
+    }
+}
+
 impl AABB {
     pub(crate) fn intersect_ray(
         &self,
-        ray_origin: &Vector3<f32>,
-        ray_direction: &Vector3<f32>,
+        origin: &Vector3<f32>,
+        inv_direction: &Vector3<f32>,
+        sign: &Vector3<usize>,
     ) -> bool {
-        let mut tmin = (self.0.x - ray_origin.x) / ray_direction.x;
-        let mut tmax = (self.1.x - ray_origin.x) / ray_direction.x;
+        let mut ray_min = (self[sign.x].x - origin.x) * inv_direction.x;
+        let mut ray_max = (self[1 - sign.x].x - origin.x) * inv_direction.x;
 
-        if tmin > tmax {
-            std::mem::swap(&mut tmin, &mut tmax);
-        }
+        let y_min = (self[sign.y].y - origin.y) * inv_direction.y;
+        let y_max = (self[1 - sign.y].y - origin.y) * inv_direction.y;
 
-        let mut tymin = (self.0.y - ray_origin.y) / ray_direction.y;
-        let mut tymax = (self.1.y - ray_origin.y) / ray_direction.y;
-
-        if tymin > tymax {
-            std::mem::swap(&mut tymin, &mut tymax);
-        }
-
-        if (tmin > tymax) || (tymin > tmax) {
+        if (ray_min > y_max) || (y_min > ray_max) {
             return false;
         }
 
-        tmin = tmin.max(tymin);
-        tmax = tmax.min(tymax);
-
-        let mut tzmin = (self.0.z - ray_origin.z) / ray_direction.z;
-        let mut tzmax = (self.1.z - ray_origin.z) / ray_direction.z;
-
-        if tzmin > tzmax {
-            std::mem::swap(&mut tzmin, &mut tzmax);
+        if y_min > ray_min {
+            ray_min = y_min;
         }
+        // Using the following solution significantly decreases the performance
+        // ray_min = ray_min.max(y_min);
 
-        if (tmin > tzmax) || (tzmin > tmax) {
+        if y_max < ray_max {
+            ray_max = y_max;
+        }
+        // Using the following solution significantly decreases the performance
+        // ray_max = ray_max.min(y_max);
+
+        let z_min = (self[sign.z].z - origin.z) * inv_direction.z;
+        let z_max = (self[1 - sign.z].z - origin.z) * inv_direction.z;
+
+        if (ray_min > z_max) || (z_min > ray_max) {
             return false;
         }
 
-        true
+        if z_max < ray_max {
+            ray_max = z_max;
+        }
+
+        // Using the following solution significantly decreases the performance
+        // ray_max = ray_max.min(y_max);
+
+        ray_max > 0.0
     }
 }
