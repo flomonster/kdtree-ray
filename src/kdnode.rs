@@ -2,44 +2,36 @@ use crate::candidate::Candidates;
 use crate::plane::Plane;
 use crate::*;
 use cgmath::*;
-use std::sync::Arc;
 
 static K_T: f32 = 15.;
 static K_I: f32 = 20.;
 
 #[derive(Clone, Debug)]
-pub struct InternalNode<P: BoundingBox> {
+pub struct InternalNode {
     left_space: AABB,
-    left_node: KDtreeNode<P>,
+    left_node: KDtreeNode,
     right_space: AABB,
-    right_node: KDtreeNode<P>,
+    right_node: KDtreeNode,
 }
 
 #[derive(Clone, Debug)]
-pub enum KDtreeNode<P: BoundingBox> {
-    Leaf { values: Vec<Arc<P>> },
-    Node { node: Box<InternalNode<P>> },
+pub enum KDtreeNode {
+    Leaf { values: Vec<usize> },
+    Node { node: Box<InternalNode> },
 }
 
-impl<P: BoundingBox> KDtreeNode<P> {
-    pub fn new(
-        space: &AABB,
-        mut candidates: Candidates<P>,
-        n: usize,
-        sides: &mut Vec<Side>,
-    ) -> Self {
+impl KDtreeNode {
+    pub fn new(space: &AABB, candidates: Candidates, n: usize, sides: &mut Vec<Side>) -> Self {
         let (cost, best_index, n_l, n_r) = Self::partition(n, &space, &candidates);
 
         // Check that the cost of the splitting is not higher than the cost of the leaf.
         if cost > K_I * n as f32 {
-            // Create the set of primitives
-            let mut values = vec![];
-            candidates
-                .drain(..)
+            // Create indices values vector
+            let values = candidates
+                .iter()
                 .filter(|e| e.is_left() && e.dimension() == 0)
-                .for_each(|e| {
-                    values.push(e.item.value.clone());
-                });
+                .map(|e| e.index)
+                .collect();
             return Self::Leaf { values };
         }
 
@@ -65,7 +57,7 @@ impl<P: BoundingBox> KDtreeNode<P> {
     /// * Index of the best candidate
     /// * Number of items in the left partition
     /// * Number of items in the right partition
-    fn partition(n: usize, space: &AABB, candidates: &Candidates<P>) -> (f32, usize, usize, usize) {
+    fn partition(n: usize, space: &AABB, candidates: &Candidates) -> (f32, usize, usize, usize) {
         let mut best_cost = f32::INFINITY;
         let mut best_candidate_index = 0;
 
@@ -103,16 +95,16 @@ impl<P: BoundingBox> KDtreeNode<P> {
         (best_cost, best_candidate_index, best_n_l, best_n_r)
     }
 
-    pub fn intersect(
-        &self,
+    pub fn intersect<'a>(
+        &'a self,
         origin: &Vector3<f32>,
         inv_direction: &Vector3<f32>,
         sign: &Vector3<usize>,
-        intersected_values: &mut Vec<Arc<P>>,
+        intersected_values: &mut LinkedList<&'a Vec<usize>>,
     ) {
         match self {
             Self::Leaf { values } => {
-                intersected_values.append(&mut values.clone());
+                intersected_values.push_back(&values);
             }
             Self::Node { node } => {
                 if node.right_space.intersect_ray(origin, inv_direction, sign) {
@@ -148,10 +140,10 @@ impl<P: BoundingBox> KDtreeNode<P> {
     }
 
     fn classify(
-        candidates: Candidates<P>,
+        candidates: Candidates,
         best_index: usize,
         sides: &mut Vec<Side>,
-    ) -> (Candidates<P>, Candidates<P>) {
+    ) -> (Candidates, Candidates) {
         // Step 1: Udate sides to classify items
         Self::classify_items(&candidates, best_index, sides);
 
@@ -162,34 +154,34 @@ impl<P: BoundingBox> KDtreeNode<P> {
     /// Step 1 of classify.
     /// Given a candidate list and a splitting candidate identify wich items are part of the
     /// left, right and both subspaces.
-    fn classify_items(candidates: &Candidates<P>, best_index: usize, sides: &mut Vec<Side>) {
+    fn classify_items(candidates: &Candidates, best_index: usize, sides: &mut Vec<Side>) {
         let best_dimension = candidates[best_index].dimension();
         for i in 0..(best_index + 1) {
             if candidates[i].dimension() == best_dimension {
                 if candidates[i].is_right() {
-                    sides[candidates[i].item.id] = Side::Left;
+                    sides[candidates[i].index] = Side::Left;
                 } else {
-                    sides[candidates[i].item.id] = Side::Both;
+                    sides[candidates[i].index] = Side::Both;
                 }
             }
         }
         for i in best_index..candidates.len() {
             if candidates[i].dimension() == best_dimension && candidates[i].is_left() {
-                sides[candidates[i].item.id] = Side::Right;
+                sides[candidates[i].index] = Side::Right;
             }
         }
     }
 
     // Step 2: Splicing candidates left and right subspace given items sides
     fn splicing_candidates(
-        mut candidates: Candidates<P>,
+        mut candidates: Candidates,
         sides: &Vec<Side>,
-    ) -> (Candidates<P>, Candidates<P>) {
+    ) -> (Candidates, Candidates) {
         let mut left_candidates = Candidates::with_capacity(candidates.len() / 2);
         let mut right_candidates = Candidates::with_capacity(candidates.len() / 2);
 
         for e in candidates.drain(..) {
-            match sides[e.item.id] {
+            match sides[e.index] {
                 Side::Left => left_candidates.push(e),
                 Side::Right => right_candidates.push(e),
                 Side::Both => {

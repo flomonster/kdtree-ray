@@ -1,36 +1,34 @@
-use crate::item::Item;
 use crate::plane::Plane;
-use crate::{BoundingBox, AABB};
+use crate::AABB;
 use std::cmp::Ordering;
-use std::sync::Arc;
 
-pub type Candidates<P> = Vec<Candidate<P>>;
+pub type Candidates = Vec<Candidate>;
 
 #[derive(Debug)]
-pub struct Candidate<P: BoundingBox> {
+pub struct Candidate {
     pub plane: Plane,
     pub is_left: bool,
-    pub item: Arc<Item<P>>,
+    pub index: usize,
 }
 
-impl<P: BoundingBox> Candidate<P> {
-    fn new(plane: Plane, is_left: bool, item: Arc<Item<P>>) -> Self {
+impl Candidate {
+    fn new(plane: Plane, is_left: bool, index: usize) -> Self {
         Candidate {
             plane,
             is_left,
-            item,
+            index,
         }
     }
 
     /// Return candidates (splits candidates) for all dimension.
-    pub fn gen_candidates(item: Arc<Item<P>>, bb: &AABB) -> Candidates<P> {
+    pub fn gen_candidates(index: usize, bb: &AABB) -> Candidates {
         vec![
-            Candidate::new(Plane::X(bb.0.x), true, item.clone()),
-            Candidate::new(Plane::X(bb.1.x), false, item.clone()),
-            Candidate::new(Plane::Y(bb.0.y), true, item.clone()),
-            Candidate::new(Plane::Y(bb.1.y), false, item.clone()),
-            Candidate::new(Plane::Z(bb.0.z), true, item.clone()),
-            Candidate::new(Plane::Z(bb.1.z), false, item),
+            Candidate::new(Plane::X(bb.0.x), true, index),
+            Candidate::new(Plane::X(bb.1.x), false, index),
+            Candidate::new(Plane::Y(bb.0.y), true, index),
+            Candidate::new(Plane::Y(bb.1.y), false, index),
+            Candidate::new(Plane::Z(bb.0.z), true, index),
+            Candidate::new(Plane::Z(bb.1.z), false, index),
         ]
     }
 
@@ -51,17 +49,17 @@ impl<P: BoundingBox> Candidate<P> {
     }
 }
 
-impl<P: BoundingBox> Clone for Candidate<P> {
+impl Clone for Candidate {
     fn clone(&self) -> Self {
         Self {
             plane: self.plane.clone(),
             is_left: self.is_left,
-            item: self.item.clone(),
+            index: self.index,
         }
     }
 }
 
-impl<P: BoundingBox> Ord for Candidate<P> {
+impl Ord for Candidate {
     fn cmp(&self, other: &Self) -> Ordering {
         if self.plane.value() < other.plane.value() {
             Ordering::Less
@@ -70,16 +68,16 @@ impl<P: BoundingBox> Ord for Candidate<P> {
         }
     }
 }
-impl<P: BoundingBox> PartialOrd for Candidate<P> {
+impl PartialOrd for Candidate {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<P: BoundingBox> PartialEq for Candidate<P> {
+impl PartialEq for Candidate {
     fn eq(&self, other: &Self) -> bool {
         self.plane.value() == other.plane.value() && self.dimension() == other.dimension()
     }
 }
 
-impl<P: BoundingBox> Eq for Candidate<P> {}
+impl Eq for Candidate {}
