@@ -23,12 +23,12 @@ impl Candidate {
     /// Return candidates (splits candidates) for all dimension.
     pub fn gen_candidates(index: usize, bb: &AABB) -> Candidates {
         vec![
-            Candidate::new(Plane::X(bb.0.x), true, index),
-            Candidate::new(Plane::X(bb.1.x), false, index),
-            Candidate::new(Plane::Y(bb.0.y), true, index),
-            Candidate::new(Plane::Y(bb.1.y), false, index),
-            Candidate::new(Plane::Z(bb.0.z), true, index),
-            Candidate::new(Plane::Z(bb.1.z), false, index),
+            Candidate::new(Plane::X(bb[0].x), true, index),
+            Candidate::new(Plane::X(bb[1].x), false, index),
+            Candidate::new(Plane::Y(bb[0].y), true, index),
+            Candidate::new(Plane::Y(bb[1].y), false, index),
+            Candidate::new(Plane::Z(bb[0].z), true, index),
+            Candidate::new(Plane::Z(bb[1].z), false, index),
         ]
     }
 

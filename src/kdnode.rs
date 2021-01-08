@@ -1,13 +1,12 @@
 use crate::candidate::Candidates;
 use crate::plane::Plane;
 use crate::*;
-use cgmath::*;
 
 static K_T: f32 = 15.;
 static K_I: f32 = 20.;
 
 #[derive(Clone, Debug)]
-pub struct InternalNode {
+pub(crate) struct InternalNode {
     left_space: AABB,
     left_node: KDtreeNode,
     right_space: AABB,
@@ -15,7 +14,7 @@ pub struct InternalNode {
 }
 
 #[derive(Clone, Debug)]
-pub enum KDtreeNode {
+pub(crate) enum KDtreeNode {
     Leaf { values: Vec<usize> },
     Node { node: Box<InternalNode> },
 }
@@ -95,25 +94,17 @@ impl KDtreeNode {
         (best_cost, best_candidate_index, best_n_l, best_n_r)
     }
 
-    pub fn intersect<'a>(
-        &'a self,
-        origin: &Vector3<f32>,
-        inv_direction: &Vector3<f32>,
-        sign: &Vector3<usize>,
-        intersected_values: &mut LinkedList<&'a Vec<usize>>,
-    ) {
+    pub fn intersect<'a>(&'a self, ray: &Ray, intersected_values: &mut LinkedList<&'a Vec<usize>>) {
         match self {
             Self::Leaf { values } => {
                 intersected_values.push_back(&values);
             }
             Self::Node { node } => {
-                if node.right_space.intersect_ray(origin, inv_direction, sign) {
-                    node.right_node
-                        .intersect(origin, inv_direction, sign, intersected_values);
+                if ray.intersect(&node.right_space) {
+                    node.right_node.intersect(ray, intersected_values);
                 }
-                if node.left_space.intersect_ray(origin, inv_direction, sign) {
-                    node.left_node
-                        .intersect(origin, inv_direction, sign, intersected_values);
+                if ray.intersect(&node.left_space) {
+                    node.left_node.intersect(ray, intersected_values);
                 }
             }
         }
@@ -124,16 +115,16 @@ impl KDtreeNode {
         let mut right = space.clone();
         match plane {
             Plane::X(x) => {
-                left.1.x = x.max(space.0.x).min(space.1.x);
-                right.0.x = x.max(space.0.x).min(space.1.x);
+                left[1].x = x.max(space[0].x).min(space[1].x);
+                right[0].x = x.max(space[0].x).min(space[1].x);
             }
             Plane::Y(y) => {
-                left.1.y = y.max(space.0.y).min(space.1.y);
-                right.0.y = y.max(space.0.y).min(space.1.y);
+                left[1].y = y.max(space[0].y).min(space[1].y);
+                right[0].y = y.max(space[0].y).min(space[1].y);
             }
             Plane::Z(z) => {
-                left.1.z = z.max(space.0.z).min(space.1.z);
-                right.0.z = z.max(space.0.z).min(space.1.z);
+                left[1].z = z.max(space[0].z).min(space[1].z);
+                right[0].z = z.max(space[0].z).min(space[1].z);
             }
         }
         (left, right)
@@ -195,7 +186,7 @@ impl KDtreeNode {
 
     /// Compute surface area volume of a space (AABB).
     fn surface_area(v: &AABB) -> f32 {
-        (v.1.x - v.0.x) * (v.1.y - v.0.y) * (v.1.z - v.0.z)
+        (v[1].x - v[0].x) * (v[1].y - v[0].y) * (v[1].z - v[0].z)
     }
 
     /// Surface Area Heuristic (SAH)

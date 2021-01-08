@@ -61,6 +61,7 @@ mod bounding_box;
 mod candidate;
 mod kdnode;
 mod plane;
+mod ray;
 mod side;
 
 pub use bounding_box::*;
@@ -68,6 +69,7 @@ pub use bounding_box::*;
 use candidate::{Candidate, Candidates};
 use cgmath::*;
 use kdnode::KDtreeNode;
+use ray::Ray;
 use side::Side;
 use std::collections::LinkedList;
 use std::sync::Arc;
@@ -87,7 +89,7 @@ impl<P: BoundingBox> KDtree<P> {
     /// This function is used to create a new KD-tree. You need to provide a
     /// `Vec` of values that implement `BoundingBox` trait.
     pub fn new(mut values: Vec<P>) -> Self {
-        let mut space = AABB(Vector3::<f32>::max_value(), Vector3::<f32>::min_value());
+        let mut space = [Vector3::<f32>::max_value(), Vector3::<f32>::min_value()];
         let values: Vec<Arc<P>> = values.drain(..).map(|v| Arc::new(v)).collect();
         let n = values.len();
         let mut candidates = Candidates::with_capacity(n * 6);
@@ -97,12 +99,12 @@ impl<P: BoundingBox> KDtree<P> {
             candidates.append(&mut Candidate::gen_candidates(index, &bb));
 
             // Update space with the bounding box of the item
-            space.0.x = space.0.x.min(bb.0.x);
-            space.0.y = space.0.y.min(bb.0.y);
-            space.0.z = space.0.z.min(bb.0.z);
-            space.1.x = space.1.x.max(bb.1.x);
-            space.1.y = space.1.y.max(bb.1.y);
-            space.1.z = space.1.z.max(bb.1.z);
+            space[0].x = space[0].x.min(bb[0].x);
+            space[0].y = space[0].y.min(bb[0].y);
+            space[0].z = space[0].z.min(bb[0].z);
+            space[1].x = space[1].x.max(bb[1].x);
+            space[1].y = space[1].y.max(bb[1].y);
+            space[1].z = space[1].z.max(bb[1].z);
         }
 
         // Sort candidates only once at the begining
@@ -125,21 +127,11 @@ impl<P: BoundingBox> KDtree<P> {
         ray_origin: &Vector3<f32>,
         ray_direction: &Vector3<f32>,
     ) -> Vec<Arc<P>> {
-        let inv_direction = Vector3::new(
-            1. / ray_direction.x,
-            1. / ray_direction.y,
-            1. / ray_direction.z,
-        );
-        let sign = Vector3::new(
-            (ray_direction.x < 0.) as usize,
-            (ray_direction.y < 0.) as usize,
-            (ray_direction.z < 0.) as usize,
-        );
         let mut values = LinkedList::new();
+        let ray = Ray::new(ray_origin, ray_direction);
         // Check if the ray intersect the bounding box of the Kd Tree
-        if self.space.intersect_ray(ray_origin, &inv_direction, &sign) {
-            self.root
-                .intersect(ray_origin, &inv_direction, &sign, &mut values);
+        if ray.intersect(&self.space) {
+            self.root.intersect(&ray, &mut values);
             values
                 .into_iter()
                 .flatten()
