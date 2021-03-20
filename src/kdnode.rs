@@ -2,8 +2,8 @@ use crate::candidate::Candidates;
 use crate::plane::Plane;
 use crate::*;
 
-static K_T: f32 = 15.;
-static K_I: f32 = 20.;
+static K_T: f32 = 4.;
+static K_I: f32 = 1.;
 
 #[derive(Clone, Debug)]
 pub(crate) struct InternalNode {

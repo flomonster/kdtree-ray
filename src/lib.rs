@@ -42,7 +42,7 @@
 //!       self.0.y.max(self.1.y).max(self.2.y),
 //!       self.0.z.max(self.1.z).max(self.2.z),
 //!     );
-//!     AABB(min, max)
+//!     [min, max]
 //!   }
 //! }
 //!
