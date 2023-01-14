@@ -1,14 +1,14 @@
-use crate::plane::Plane;
+use crate::plane::{Dimension, Plane};
 use crate::AABB;
 use std::cmp::Ordering;
 
 pub type Candidates = Vec<Candidate>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Candidate {
     pub plane: Plane,
     pub is_left: bool,
-    pub index: usize,
+    pub shape: usize,
 }
 
 impl Candidate {
@@ -16,28 +16,28 @@ impl Candidate {
         Candidate {
             plane,
             is_left,
-            index,
+            shape: index,
         }
     }
 
     /// Return candidates (splits candidates) for all dimension.
-    pub fn gen_candidates(index: usize, bb: &AABB) -> Candidates {
+    pub fn gen_candidates(shape: usize, bb: &AABB) -> Candidates {
         vec![
-            Candidate::new(Plane::X(bb[0].x), true, index),
-            Candidate::new(Plane::X(bb[1].x), false, index),
-            Candidate::new(Plane::Y(bb[0].y), true, index),
-            Candidate::new(Plane::Y(bb[1].y), false, index),
-            Candidate::new(Plane::Z(bb[0].z), true, index),
-            Candidate::new(Plane::Z(bb[1].z), false, index),
+            Candidate::new(Plane::new_x(bb.min.x), true, shape),
+            Candidate::new(Plane::new_x(bb.max.x), false, shape),
+            Candidate::new(Plane::new_y(bb.min.y), true, shape),
+            Candidate::new(Plane::new_y(bb.max.y), false, shape),
+            Candidate::new(Plane::new_z(bb.min.z), true, shape),
+            Candidate::new(Plane::new_z(bb.max.z), false, shape),
         ]
     }
 
-    pub fn dimension(&self) -> usize {
-        match self.plane {
-            Plane::X(_) => 0,
-            Plane::Y(_) => 1,
-            Plane::Z(_) => 2,
-        }
+    pub fn dimension(&self) -> Dimension {
+        self.plane.dimension
+    }
+
+    pub fn position(&self) -> f32 {
+        self.plane.pos
     }
 
     pub fn is_left(&self) -> bool {
@@ -49,19 +49,9 @@ impl Candidate {
     }
 }
 
-impl Clone for Candidate {
-    fn clone(&self) -> Self {
-        Self {
-            plane: self.plane.clone(),
-            is_left: self.is_left,
-            index: self.index,
-        }
-    }
-}
-
 impl Ord for Candidate {
     fn cmp(&self, other: &Self) -> Ordering {
-        if self.plane.value() < other.plane.value() {
+        if self.position() < other.position() {
             Ordering::Less
         } else {
             Ordering::Greater
@@ -76,8 +66,16 @@ impl PartialOrd for Candidate {
 
 impl PartialEq for Candidate {
     fn eq(&self, other: &Self) -> bool {
-        self.plane.value() == other.plane.value() && self.dimension() == other.dimension()
+        self.position() == other.position() && self.dimension() == other.dimension()
     }
 }
 
 impl Eq for Candidate {}
+
+/// Useful to classify candidates
+#[derive(Debug, Clone, Copy)]
+pub enum Side {
+    Left,
+    Right,
+    Both,
+}

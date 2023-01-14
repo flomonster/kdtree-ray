@@ -14,7 +14,7 @@
 </p>
 <hr>
 
-This crate is a fast implementation of [BVH](https://en.wikipedia.org/wiki/Bounding_volume_hierarchy)
+This crate is a fast implementation of [KD-Tree](https://en.wikipedia.org/wiki/K-d_tree)
 for raytracer (or other rendering method using ray).
 
 It's based on this [paper](http://www.irisa.fr/prive/kadi/Sujets_CTR/kadi/Kadi_sujet2_article_Kdtree.pdf) written by *Ingo Wald* and *Vlastimil Havran*.
@@ -27,9 +27,11 @@ To install it, just add the dependency in your `Cargo.toml`.
 
 ```toml
 [dependencies]
-kdtree-ray="0.1.2"
+kdtree-ray="1.0.0"
 ```
 
 ### Usage
 
-For examples of use see the [crate documentation](https://docs.rs/kdtree-ray).
+Examples of use:
+
+- [Path Tracer](https://github.com/flomonster/path-tracer)

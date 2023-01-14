@@ -1,6 +1,6 @@
 [package]
 name = "kdtree-ray"
-version = "0.1.2"
+version = "1.0.0"
 authors = ["Florian Amsallem <florian.amsallem@epita.fr>"]
 description = "Fast Kdtree implementation for raytracer"
 documentation = "https://docs.rs/kdtree-ray"
@@ -13,3 +13,4 @@ exclude = [".github/"]
 
 [dependencies]
 cgmath = "0.18.0"
+enum-map = "2.4.2"
