@@ -8,7 +8,7 @@ repository = "https://github.com/flomonster/kdtree-ray"
 homepage = "https://github.com/flomonster/kdtree-ray"
 edition = "2018"
 license = "MIT"
-keywords = ["kdtree", "raytracer", "3D", "sah", "bvh"]
+keywords = ["kdtree", "raytracer", "3D", "sah"]
 exclude = [".github/"]
 
 [dependencies]
