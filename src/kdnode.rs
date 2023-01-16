@@ -49,7 +49,6 @@ pub fn build_tree(
             .filter(|e| e.is_left() && e.dimension() == Dimension::X)
             .map(|e| e.shape)
             .collect();
-
         tree.push(KDTreeNode::Leaf { shapes });
         return 1;
     }
@@ -132,16 +131,16 @@ fn split_space(space: &AABB, splitting_plane: &Plane) -> (AABB, AABB) {
     let pos = splitting_plane.pos;
     match splitting_plane.dimension {
         Dimension::X => {
-            right.min.x = pos.max(space.min.x).min(space.max.x);
-            left.max.x = pos.max(space.min.x).min(space.max.x);
+            right.min.x = pos.clamp(space.min.x, space.max.x);
+            left.max.x = pos.clamp(space.min.x, space.max.x);
         }
         Dimension::Y => {
-            right.min.y = pos.max(space.min.y).min(space.max.y);
-            left.max.y = pos.max(space.min.y).min(space.max.y);
+            right.min.y = pos.clamp(space.min.y, space.max.y);
+            left.max.y = pos.clamp(space.min.y, space.max.y);
         }
         Dimension::Z => {
-            right.min.z = pos.max(space.min.z).min(space.max.z);
-            left.max.z = pos.max(space.min.z).min(space.max.z);
+            right.min.z = pos.clamp(space.min.z, space.max.z);
+            left.max.z = pos.clamp(space.min.z, space.max.z);
         }
     }
     (left, right)

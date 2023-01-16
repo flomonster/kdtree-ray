@@ -68,6 +68,9 @@ impl KDTree {
                 }
             }
         }
+        // Dedup duplicated shapes
+        result.sort();
+        result.dedup();
         result
     }
 }
