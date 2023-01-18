@@ -29,9 +29,9 @@
 //! use kdtree_ray::{AABB, Bounded, KDTree};
 //! struct Triangle(Vector3<f32>, Vector3<f32>, Vector3<f32>);
 //!
-//! // To use the KDtree on an object you need first to implement the BoundingBox trait.
-//! impl BoundingBox for Triangle {
-//!   fn bounding_box(&self) -> AABB {
+//! // To use the KDTree on an object you need first to implement the BoundingBox trait.
+//! impl Bounded for Triangle {
+//!   fn bound(&self) -> AABB {
 //!     let min = Vector3::new(
 //!       self.0.x.min(self.1.x).min(self.2.x),
 //!       self.0.y.min(self.1.y).min(self.2.y),
@@ -42,13 +42,14 @@
 //!       self.0.y.max(self.1.y).max(self.2.y),
 //!       self.0.z.max(self.1.z).max(self.2.z),
 //!     );
-//!     [min, max]
+//!     AABB::new(min, max)
 //!   }
 //! }
 //!
 //! // Kdtree creation
-//! let triangles: Vec<Triangle> = vec![/* ... */];
-//! let kdtree = KDtree::new(triangles);
+//! let triangle = Triangle(Vector3::zero(), Vector3::zero(), Vector3::zero());
+//! let triangles: Vec<Triangle> = vec![triangle, /* ... */];
+//! let kdtree = KDTree::build(&triangles);
 //!
 //! // Get a reduced list of triangles that a ray could intersect
 //! let ray_origin = Vector3::zero();
