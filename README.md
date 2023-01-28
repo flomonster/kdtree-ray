@@ -27,7 +27,7 @@ To install it, just add the dependency in your `Cargo.toml`.
 
 ```toml
 [dependencies]
-kdtree-ray="1.0.0"
+kdtree-ray="1.1.0"
 ```
 
 ### Usage
