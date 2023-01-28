@@ -2,8 +2,12 @@ use crate::aabb::*;
 use crate::candidate::{Candidates, Side};
 use crate::plane::{Dimension, Plane};
 
-static COST_TRAVERSAL: f32 = 4.;
-static COST_INTERSECTION: f32 = 1.;
+static COST_TRAVERSAL: f32 = 15.;
+static COST_INTERSECTION: f32 = 20.;
+/// Bonus (between `0.` and `1.`) for cutting an empty space:
+/// * `1.` means that cutting an empty space is in any case better than cutting a full space.
+/// * `0.` means that cutting an empty space isn't better than cutting a full space.
+static EMPTY_CUT_BONUS: f32 = 0.2;
 
 #[derive(Clone, Debug)]
 pub enum KDTreeNode {
@@ -199,29 +203,30 @@ fn splicing_candidates(mut candidates: Candidates, sides: &[Side]) -> (Candidate
 
 /// Surface Area Heuristic (SAH)
 fn cost(plane: &Plane, space: &AABB, n_left: usize, n_right: usize) -> f32 {
+    // If no space is cut, return infinity
+    if plane.is_border(space) {
+        return f32::INFINITY;
+    }
+
+    // Compute the surface area of the whole space
+    let surface_space = space.surface();
+
     // Split space
     let (space_left, space_right) = split_space(space, plane);
 
     // Compute the surface area of both subspace
-    let vol_left = space_left.volume();
-    let vol_right = space_right.volume();
-
-    // Compute the surface area of the whole space
-    let vol_space = vol_left + vol_right;
-
-    // If one of the subspace is empty then the split can't be worth
-    if vol_space == 0. || vol_left == 0. || vol_right == 0. {
-        return f32::INFINITY;
-    }
+    let surface_left = space_left.surface();
+    let surface_right = space_right.surface();
 
     // Compute raw cost
     let cost = COST_TRAVERSAL
         + COST_INTERSECTION
-            * (n_left as f32 * vol_left / vol_space + n_right as f32 * vol_right / vol_space);
+            * (n_left as f32 * surface_left / surface_space
+                + n_right as f32 * surface_right / surface_space);
 
     // Decrease cost if it cuts empty space
     if n_left == 0 || n_right == 0 {
-        cost * 0.8
+        cost * (1. - EMPTY_CUT_BONUS)
     } else {
         cost
     }

@@ -1,5 +1,7 @@
 use enum_map::{Enum, EnumMap};
 
+use crate::AABB;
+
 /// 3D dimensions enum.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Enum)]
 pub enum Dimension {
@@ -44,5 +46,14 @@ impl Plane {
     /// Create a new plane on the Z axis.
     pub fn new_z(pos: f32) -> Self {
         Plane::new(Dimension::Z, pos)
+    }
+
+    pub fn is_border(&self, space: &AABB) -> bool {
+        let epsilon = 0.00001;
+        match self.dimension {
+            Dimension::X => self.pos < space.min.x + epsilon || self.pos > space.max.x - epsilon,
+            Dimension::Y => self.pos < space.min.y + epsilon || self.pos > space.max.y - epsilon,
+            Dimension::Z => self.pos < space.min.z + epsilon || self.pos > space.max.z - epsilon,
+        }
     }
 }

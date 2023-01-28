@@ -43,6 +43,14 @@ impl AABB {
         (self.max.x - self.min.x) * (self.max.y - self.min.y) * (self.max.z - self.min.z)
     }
 
+    /// Compute AABB surface
+    pub fn surface(&self) -> f32 {
+        let dx = self.max.x - self.min.x;
+        let dy = self.max.y - self.min.y;
+        let dz = self.max.z - self.min.z;
+        2.0 * (dx * dy + dx * dz + dy * dz)
+    }
+
     /// Merge another AABB into this one.
     pub fn merge(&mut self, other: &Self) {
         self.min = Point3::new(
