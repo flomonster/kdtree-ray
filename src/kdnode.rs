@@ -1,13 +1,7 @@
 use crate::aabb::*;
 use crate::candidate::{Candidates, Side};
+use crate::config::BuilderConfig;
 use crate::plane::{Dimension, Plane};
-
-static COST_TRAVERSAL: f32 = 15.;
-static COST_INTERSECTION: f32 = 20.;
-/// Bonus (between `0.` and `1.`) for cutting an empty space:
-/// * `1.` means that cutting an empty space is in any case better than cutting a full space.
-/// * `0.` means that cutting an empty space isn't better than cutting a full space.
-static EMPTY_CUT_BONUS: f32 = 0.2;
 
 #[derive(Clone, Debug)]
 pub enum KDTreeNode {
@@ -37,16 +31,17 @@ impl KDTreeNode {
 
 /// Build a KDTree from a list of candidates and return the depth of the tree.
 pub fn build_tree(
+    config: &BuilderConfig,
     space: &AABB,
     candidates: Candidates,
     nb_shapes: usize,
     sides: &mut [Side],
     tree: &mut Vec<KDTreeNode>,
 ) -> usize {
-    let (cost, best_index, n_l, n_r) = partition(nb_shapes, space, &candidates);
+    let (cost, best_index, n_l, n_r) = partition(config, nb_shapes, space, &candidates);
 
     // Check that the cost of the splitting is not higher than the cost of the leaf.
-    if cost > COST_INTERSECTION * nb_shapes as f32 {
+    if cost > config.cost_intersection() * nb_shapes as f32 {
         // Create indices values vector
         let shapes = candidates
             .iter()
@@ -73,13 +68,13 @@ pub fn build_tree(
     });
 
     // Add left child
-    let depth_left = build_tree(&left_space, left_candidates, n_l, sides, tree);
+    let depth_left = build_tree(config, &left_space, left_candidates, n_l, sides, tree);
 
     let r_child_index = tree.len();
     tree[node_index].set_r_child_index(r_child_index);
 
     // Add right
-    let depth_right = build_tree(&right_space, right_candidates, n_r, sides, tree);
+    let depth_right = build_tree(config, &right_space, right_candidates, n_r, sides, tree);
 
     1 + depth_left.max(depth_right)
 }
@@ -90,7 +85,12 @@ pub fn build_tree(
 /// * Index of the best candidate
 /// * Number of items in the left partition
 /// * Number of items in the right partition
-fn partition(n: usize, space: &AABB, candidates: &Candidates) -> (f32, usize, usize, usize) {
+fn partition(
+    config: &BuilderConfig,
+    n: usize,
+    space: &AABB,
+    candidates: &Candidates,
+) -> (f32, usize, usize, usize) {
     let mut best_cost = f32::INFINITY;
     let mut best_candidate_index = 0;
 
@@ -112,7 +112,7 @@ fn partition(n: usize, space: &AABB, candidates: &Candidates) -> (f32, usize, us
         }
 
         // Compute the cost of the split and update the best split
-        let cost = cost(&candidate.plane, space, n_l[dim], n_r[dim]);
+        let cost = cost(config, &candidate.plane, space, n_l[dim], n_r[dim]);
         if cost < best_cost {
             best_cost = cost;
             best_candidate_index = i;
@@ -202,9 +202,9 @@ fn splicing_candidates(mut candidates: Candidates, sides: &[Side]) -> (Candidate
 }
 
 /// Surface Area Heuristic (SAH)
-fn cost(plane: &Plane, space: &AABB, n_left: usize, n_right: usize) -> f32 {
-    // If no space is cut, return infinity
-    if plane.is_border(space) {
+fn cost(config: &BuilderConfig, plane: &Plane, space: &AABB, n_left: usize, n_right: usize) -> f32 {
+    // If the plane doesn't cut the space, return max cost
+    if !plane.is_cutting(space) {
         return f32::INFINITY;
     }
 
@@ -219,14 +219,14 @@ fn cost(plane: &Plane, space: &AABB, n_left: usize, n_right: usize) -> f32 {
     let surface_right = space_right.surface();
 
     // Compute raw cost
-    let cost = COST_TRAVERSAL
-        + COST_INTERSECTION
+    let cost = config.cost_traversal()
+        + config.cost_intersection()
             * (n_left as f32 * surface_left / surface_space
                 + n_right as f32 * surface_right / surface_space);
 
     // Decrease cost if it cuts empty space
     if n_left == 0 || n_right == 0 {
-        cost * (1. - EMPTY_CUT_BONUS)
+        cost * (1. - config.empty_cut_bonus())
     } else {
         cost
     }

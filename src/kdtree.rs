@@ -1,5 +1,6 @@
 use crate::aabb::*;
 use crate::candidate::*;
+use crate::config::BuilderConfig;
 use crate::kdnode::{build_tree, KDTreeNode};
 use crate::ray::Ray;
 use crate::Vector3;
@@ -15,8 +16,9 @@ pub struct KDTree {
 impl KDTree {
     /// This function is used to build a new KD-tree. You need to provide a
     /// `Vec` of shapes that implement `Bounded` trait.
+    /// You also should give a configuration.
     /// Panic if the `shapes` is empty.
-    pub fn build<S: Bounded>(shapes: &Vec<S>) -> Self {
+    pub fn build_config<S: Bounded>(shapes: &Vec<S>, config: &BuilderConfig) -> Self {
         assert!(!shapes.is_empty());
         let mut space = AABB::default();
         let mut candidates = Candidates::with_capacity(shapes.len() * 6);
@@ -35,11 +37,21 @@ impl KDTree {
         // Will be used to classify candidates
         let mut sides = vec![Side::Both; shapes.len()];
 
+        let nb_shapes = shapes.len();
+
         // Build the tree
         let mut tree = vec![];
-        let depth = build_tree(&space, candidates, shapes.len(), &mut sides, &mut tree);
+        let depth = build_tree(config, &space, candidates, nb_shapes, &mut sides, &mut tree);
 
         KDTree { space, tree, depth }
+    }
+
+    /// This function is used to build a new KD-tree. You need to provide a
+    /// `Vec` of shapes that implement `Bounded` trait.
+    /// Take a default configuration.
+    /// Panic if the `shapes` is empty.
+    pub fn build<S: Bounded>(shapes: &Vec<S>) -> Self {
+        Self::build_config(shapes, &BuilderConfig::default())
     }
 
     /// This function takes a ray and return a reduced list of shapes that

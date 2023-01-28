@@ -58,12 +58,14 @@
 //! ```
 mod aabb;
 mod candidate;
+mod config;
 mod kdnode;
 mod kdtree;
 mod plane;
 mod ray;
 
 pub use aabb::*;
+pub use config::BuilderConfig;
 pub use kdtree::KDTree;
 
 type Point3 = cgmath::Vector3<f32>;

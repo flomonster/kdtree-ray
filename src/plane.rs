@@ -48,12 +48,12 @@ impl Plane {
         Plane::new(Dimension::Z, pos)
     }
 
-    pub fn is_border(&self, space: &AABB) -> bool {
-        let epsilon = 0.00001;
+    /// Check if the plane is cutting the given space.
+    pub fn is_cutting(&self, space: &AABB) -> bool {
         match self.dimension {
-            Dimension::X => self.pos < space.min.x + epsilon || self.pos > space.max.x - epsilon,
-            Dimension::Y => self.pos < space.min.y + epsilon || self.pos > space.max.y - epsilon,
-            Dimension::Z => self.pos < space.min.z + epsilon || self.pos > space.max.z - epsilon,
+            Dimension::X => self.pos > space.min.x && self.pos < space.max.x,
+            Dimension::Y => self.pos > space.min.y && self.pos < space.max.y,
+            Dimension::Z => self.pos > space.min.z && self.pos < space.max.z,
         }
     }
 }
