@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::aabb::*;
 use crate::candidate::{Candidates, Side};
 use crate::config::BuilderConfig;
@@ -17,14 +19,18 @@ pub enum KDTreeNode {
 }
 
 impl KDTreeNode {
-    pub fn set_r_child_index(&mut self, index: usize) {
-        if let KDTreeNode::Node {
-            ref mut r_child, ..
-        } = self
-        {
-            *r_child = index;
-        } else {
-            panic!("Cannot set r_child index on a leaf node");
+    /// Move indices of the tree by `offset`.
+    fn move_indices(&mut self, offset: usize) {
+        match self {
+            KDTreeNode::Leaf { .. } => {}
+            KDTreeNode::Node {
+                ref mut l_child,
+                ref mut r_child,
+                ..
+            } => {
+                *l_child += offset;
+                *r_child += offset;
+            }
         }
     }
 }
@@ -35,9 +41,7 @@ pub fn build_tree(
     space: &AABB,
     candidates: Candidates,
     nb_shapes: usize,
-    sides: &mut [Side],
-    tree: &mut Vec<KDTreeNode>,
-) -> usize {
+) -> (usize, Vec<KDTreeNode>) {
     let (cost, best_index, n_l, n_r) = partition(config, nb_shapes, space, &candidates);
 
     // Check that the cost of the splitting is not higher than the cost of the leaf.
@@ -48,35 +52,48 @@ pub fn build_tree(
             .filter(|e| e.is_left() && e.dimension() == Dimension::X)
             .map(|e| e.shape)
             .collect();
-        tree.push(KDTreeNode::Leaf { shapes });
-        return 1;
+        return (1, vec![KDTreeNode::Leaf { shapes }]);
     }
 
     // Compute the new spaces divided by `plane`
-    let (left_space, right_space) = split_space(space, &candidates[best_index].plane);
+    let (l_space, r_space) = split_space(space, &candidates[best_index].plane);
 
     // Compute which candidates are part of the left and right space
-    let (left_candidates, right_candidates) = classify(candidates, best_index, sides);
-
-    // Add current node
-    let node_index = tree.len();
-    tree.push(KDTreeNode::Node {
-        l_child: node_index + 1,
-        l_space: left_space.clone(),
-        r_child: 0, // Filled later
-        r_space: right_space.clone(),
-    });
+    let (left_candidates, right_candidates) = classify(candidates, best_index, nb_shapes);
 
     // Add left child
-    let depth_left = build_tree(config, &left_space, left_candidates, n_l, sides, tree);
+    let (left, right) = rayon::join(
+        || build_tree(config, &l_space, left_candidates, n_l),
+        || build_tree(config, &r_space, right_candidates, n_r),
+    );
 
-    let r_child_index = tree.len();
-    tree[node_index].set_r_child_index(r_child_index);
+    let (depth_left, mut tree_left) = left;
+    let (depth_right, mut tree_right) = right;
+    let mut tree = vec![];
 
-    // Add right
-    let depth_right = build_tree(config, &right_space, right_candidates, n_r, sides, tree);
+    // Add current node
+    let l_child_index = 1;
+    let r_child_index = tree_left.len() + 1;
+    tree.push(KDTreeNode::Node {
+        l_child: l_child_index,
+        l_space,
+        r_child: r_child_index,
+        r_space,
+    });
 
-    1 + depth_left.max(depth_right)
+    // Update indices of the left tree.
+    tree_left
+        .iter_mut()
+        .for_each(|node| node.move_indices(l_child_index));
+    tree.extend(tree_left);
+
+    // Update indices of the right tree.
+    tree_right
+        .iter_mut()
+        .for_each(|node| node.move_indices(r_child_index));
+    tree.extend(tree_right);
+
+    (1 + depth_left.max(depth_right), tree)
 }
 
 /// Compute the best splitting candidate
@@ -153,43 +170,47 @@ fn split_space(space: &AABB, splitting_plane: &Plane) -> (AABB, AABB) {
 fn classify(
     candidates: Candidates,
     best_index: usize,
-    sides: &mut [Side],
+    nb_shapes: usize,
 ) -> (Candidates, Candidates) {
+    let mut sides = HashMap::with_capacity(nb_shapes);
     // Step 1: Udate sides to classify items
-    classify_items(&candidates, best_index, sides);
+    classify_items(&candidates, best_index, &mut sides);
 
     // Step 2: Splicing candidates left and right subspace
-    splicing_candidates(candidates, sides)
+    splicing_candidates(candidates, &sides)
 }
 
 /// Step 1 of classify.
 /// Given a candidate list and a splitting candidate identify wich items are part of the
 /// left, right and both subspaces.
-fn classify_items(candidates: &Candidates, best_index: usize, sides: &mut [Side]) {
+fn classify_items(candidates: &Candidates, best_index: usize, sides: &mut HashMap<usize, Side>) {
     let best_dimension = candidates[best_index].dimension();
-    for i in 0..(best_index + 1) {
+    (0..(best_index + 1)).for_each(|i| {
         if candidates[i].dimension() == best_dimension {
             if candidates[i].is_right() {
-                sides[candidates[i].shape] = Side::Left;
+                sides.insert(candidates[i].shape, Side::Left);
             } else {
-                sides[candidates[i].shape] = Side::Both;
+                sides.insert(candidates[i].shape, Side::Both);
             }
         }
-    }
-    for i in best_index..candidates.len() {
+    });
+    (best_index..candidates.len()).for_each(|i| {
         if candidates[i].dimension() == best_dimension && candidates[i].is_left() {
-            sides[candidates[i].shape] = Side::Right;
+            sides.insert(candidates[i].shape, Side::Right);
         }
-    }
+    });
 }
 
 // Step 2: Splicing candidates left and right subspace given items sides
-fn splicing_candidates(mut candidates: Candidates, sides: &[Side]) -> (Candidates, Candidates) {
+fn splicing_candidates(
+    mut candidates: Candidates,
+    sides: &HashMap<usize, Side>,
+) -> (Candidates, Candidates) {
     let mut left_candidates = Candidates::with_capacity(candidates.len() / 2);
     let mut right_candidates = Candidates::with_capacity(candidates.len() / 2);
 
     for e in candidates.drain(..) {
-        match sides[e.shape] {
+        match sides[&e.shape] {
             Side::Left => left_candidates.push(e),
             Side::Right => right_candidates.push(e),
             Side::Both => {

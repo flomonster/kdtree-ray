@@ -1,3 +1,5 @@
+use rayon::ThreadPoolBuilder;
+
 use crate::aabb::*;
 use crate::candidate::*;
 use crate::config::BuilderConfig;
@@ -34,14 +36,11 @@ impl KDTree {
         // Sort candidates only once at the begining
         candidates.sort();
 
-        // Will be used to classify candidates
-        let mut sides = vec![Side::Both; shapes.len()];
-
         let nb_shapes = shapes.len();
 
         // Build the tree
-        let mut tree = vec![];
-        let depth = build_tree(config, &space, candidates, nb_shapes, &mut sides, &mut tree);
+        let pool = ThreadPoolBuilder::new().build().unwrap();
+        let (depth, tree) = pool.install(|| build_tree(config, &space, candidates, nb_shapes));
 
         KDTree { space, tree, depth }
     }

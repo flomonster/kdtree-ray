@@ -66,12 +66,11 @@ impl Ray {
             return false;
         }
 
+        // Using the following solution significantly decreases the performance
+        // ray_max = ray_max.min(y_max);
         if z_max < ray_max {
             ray_max = z_max;
         }
-
-        // Using the following solution significantly decreases the performance
-        // ray_max = ray_max.min(y_max);
 
         ray_max > 0.0
     }
