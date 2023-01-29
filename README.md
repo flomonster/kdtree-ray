@@ -27,11 +27,45 @@ To install it, just add the dependency in your `Cargo.toml`.
 
 ```toml
 [dependencies]
-kdtree-ray="1.1.0"
+kdtree-ray="1.2.0"
 ```
 
 ### Usage
 
-Examples of use:
+```rust
+use cgmath::*;
+use kdtree_ray::{AABB, Bounded, KDTree};
+
+struct Triangle(Vector3<f32>, Vector3<f32>, Vector3<f32>);
+
+// To use the KDTree on an object you need first to implement the BoundingBox trait.
+impl Bounded for Triangle {
+  fn bound(&self) -> AABB {
+    let min = Vector3::new(
+      self.0.x.min(self.1.x).min(self.2.x),
+      self.0.y.min(self.1.y).min(self.2.y),
+      self.0.z.min(self.1.z).min(self.2.z),
+    );
+    let max = Vector3::new(
+      self.0.x.max(self.1.x).max(self.2.x),
+      self.0.y.max(self.1.y).max(self.2.y),
+      self.0.z.max(self.1.z).max(self.2.z),
+    );
+    AABB::new(min, max)
+  }
+}
+
+// Kdtree creation
+let triangle = Triangle(Vector3::zero(), Vector3::zero(), Vector3::zero());
+let triangles: Vec<Triangle> = vec![triangle, /* ... */];
+let kdtree = KDTree::build(&triangles);
+
+// Get a reduced list of triangles that a ray could intersect
+let ray_origin = Vector3::zero();
+let ray_direction = Vector3::new(1., 0., 0.);
+let candidates_triangles = kdtree.intersect(&ray_origin, &ray_direction);
+```
+
+Examples of projects using this crate:
 
 - [Path Tracer](https://github.com/flomonster/path-tracer)
