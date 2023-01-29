@@ -45,17 +45,17 @@ impl Ray {
             return false;
         }
 
+        // Using the following solution significantly decreases the performance
+        // ray_min = ray_min.max(y_min);
         if y_min > ray_min {
             ray_min = y_min;
         }
-        // Using the following solution significantly decreases the performance
-        // ray_min = ray_min.max(y_min);
 
+        // Using the following solution significantly decreases the performance
+        // ray_max = ray_max.min(y_max);
         if y_max < ray_max {
             ray_max = y_max;
         }
-        // Using the following solution significantly decreases the performance
-        // ray_max = ray_max.min(y_max);
 
         let z_min =
             (Self::get_aabb_sign(aabb, self.sign[2]).z - self.origin.z) * self.inv_direction.z;
