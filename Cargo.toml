@@ -13,5 +13,5 @@ exclude = [".github/"]
 
 [dependencies]
 cgmath = "0.18.0"
-enum-map = "2.4.2"
-rayon = "1.6.1"
+enum-map = "2.7.0"
+rayon = "1.8.0"
