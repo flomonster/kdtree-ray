@@ -24,9 +24,7 @@ impl KDTreeNode {
         match self {
             KDTreeNode::Leaf { .. } => {}
             KDTreeNode::Node {
-                ref mut l_child,
-                ref mut r_child,
-                ..
+                l_child, r_child, ..
             } => {
                 *l_child += offset;
                 *r_child += offset;

@@ -1,5 +1,5 @@
-use crate::plane::{Dimension, Plane};
 use crate::AABB;
+use crate::plane::{Dimension, Plane};
 use std::cmp::Ordering;
 
 pub type Candidates = Vec<Candidate>;

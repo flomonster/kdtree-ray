@@ -1,4 +1,4 @@
-use crate::{Point3, Vector3, AABB};
+use crate::{AABB, Point3, Vector3};
 
 /// A 3D ray
 pub struct Ray {
@@ -23,11 +23,7 @@ impl Ray {
     }
 
     fn get_aabb_sign(aabb: &AABB, sign: bool) -> Point3 {
-        if sign {
-            aabb.max
-        } else {
-            aabb.min
-        }
+        if sign { aabb.max } else { aabb.min }
     }
 
     pub fn intersect(&self, aabb: &AABB) -> bool {

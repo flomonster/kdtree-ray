@@ -1,11 +1,11 @@
 use rayon::ThreadPoolBuilder;
 
+use crate::Vector3;
 use crate::aabb::*;
 use crate::candidate::*;
 use crate::config::BuilderConfig;
-use crate::kdnode::{build_tree, KDTreeNode};
+use crate::kdnode::{KDTreeNode, build_tree};
 use crate::ray::Ray;
-use crate::Vector3;
 
 /// The KD-tree data structure.
 #[derive(Clone, Debug)]
@@ -20,7 +20,7 @@ impl KDTree {
     /// `Vec` of shapes that implement `Bounded` trait.
     /// You also should give a configuration.
     /// Panic if the `shapes` is empty.
-    pub fn build_config<S: Bounded>(shapes: &Vec<S>, config: &BuilderConfig) -> Self {
+    pub fn build_config<S: Bounded>(shapes: &[S], config: &BuilderConfig) -> Self {
         assert!(!shapes.is_empty());
         let mut space = AABB::default();
         let mut candidates = Candidates::with_capacity(shapes.len() * 6);
@@ -49,7 +49,7 @@ impl KDTree {
     /// `Vec` of shapes that implement `Bounded` trait.
     /// Take a default configuration.
     /// Panic if the `shapes` is empty.
-    pub fn build<S: Bounded>(shapes: &Vec<S>) -> Self {
+    pub fn build<S: Bounded>(shapes: &[S]) -> Self {
         Self::build_config(shapes, &BuilderConfig::default())
     }
 
